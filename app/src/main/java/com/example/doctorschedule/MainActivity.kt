@@ -18,6 +18,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.SwitchCompat
 import androidx.appcompat.widget.Toolbar
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -40,6 +41,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var floatingDove: TextView
 
     private val handler = Handler(Looper.getMainLooper())
+    private var currentDoctors: List<Doctor> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,14 +66,17 @@ class MainActivity : AppCompatActivity() {
         }
 
         viewModel.doctors.observe(this) { doctors ->
+            currentDoctors = doctors
             recyclerView.adapter = DoctorAdapter(doctors)
             if (doctors.isEmpty()) {
                 Toast.makeText(this, "اطلاعاتی یافت نشد", Toast.LENGTH_SHORT).show()
             } else {
-                // ذخیرهٔ خودکار لیست پزشکان در فایل JSON
+                // ذخیرهٔ خودکار لیست پزشکان در فایل JSON (همیشه)
                 JsonStorage.saveDoctors(this, doctors)
-                // دریافت خودکار و ترتیبی جزئیات همهٔ نوبت‌ها (پس‌زمینه)
-                autoFetchAllTurnInfos(doctors)
+                // دریافت خودکار جزئیات نوبت‌ها فقط اگر سوییچ روشن باشد
+                if (JsonStorage.isAutoFetchEnabled(this)) {
+                    autoFetchAllTurnInfos(doctors)
+                }
             }
         }
 
@@ -107,12 +112,14 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * دریافت خودکار و ترتیبی جزئیات نوبت‌ها در پس‌زمینه.
-     * هر نوبت یکی‌یکی گرفته می‌شود و در JSON ذخیره می‌شود.
+     * فقط وقتی سوییچ روشن باشد فراخوانی می‌شود.
      */
     private fun autoFetchAllTurnInfos(doctors: List<Doctor>) {
         CoroutineScope(Dispatchers.IO).launch {
             for (doctor in doctors) {
                 for (schedule in doctor.schedules) {
+                    // اگر کاربر در میانهٔ کار سوییچ را خاموش کرد، متوقف شو
+                    if (!JsonStorage.isAutoFetchEnabled(this@MainActivity)) return@launch
                     try {
                         val info = TurnInfoService.getTurnInfo(schedule.showId)
                         if (info != null) {
@@ -127,7 +134,6 @@ class MainActivity : AppCompatActivity() {
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
-                    // تأخیر کوتاه برای جلوگیری از فشار به سرور
                     delay(300)
                 }
             }
@@ -154,11 +160,28 @@ class MainActivity : AppCompatActivity() {
         val tvJson = dialogView.findViewById<TextView>(R.id.tv_json)
         val tvSize = dialogView.findViewById<TextView>(R.id.tv_size)
         val btnCopy = dialogView.findViewById<android.widget.Button>(R.id.btn_copy_json)
+        val switchAutoFetch = dialogView.findViewById<SwitchCompat>(R.id.switch_auto_fetch)
 
         val json = JsonStorage.loadJson(this)
         tvJson.text = json
         val sizeKb = JsonStorage.getFileSizeBytes(this) / 1024.0
         tvSize.text = "حجم فایل: %.2f کیلوبایت".format(sizeKb)
+
+        // بارگذاری وضعیت فعلی سوییچ
+        switchAutoFetch.isChecked = JsonStorage.isAutoFetchEnabled(this)
+
+        switchAutoFetch.setOnCheckedChangeListener { _, isChecked ->
+            JsonStorage.setAutoFetchEnabled(this, isChecked)
+            if (isChecked) {
+                Toast.makeText(this, "استخراج خودکار نوبت‌ها روشن شد", Toast.LENGTH_SHORT).show()
+                // اگر لیست پزشکان موجود است، همین حالا شروع کن
+                if (currentDoctors.isNotEmpty()) {
+                    autoFetchAllTurnInfos(currentDoctors)
+                }
+            } else {
+                Toast.makeText(this, "استخراج خودکار نوبت‌ها خاموش شد", Toast.LENGTH_SHORT).show()
+            }
+        }
 
         val dialog = AlertDialog.Builder(this)
             .setTitle("JSON ذخیره شده")
