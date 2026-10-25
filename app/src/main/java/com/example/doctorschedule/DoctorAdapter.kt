@@ -60,6 +60,14 @@ class DoctorAdapter(private val doctors: List<Doctor>) :
             withContext(Dispatchers.Main) {
                 progressDialog.dismiss()
                 if (info != null) {
+                    // ذخیرهٔ جزئیات نوبت در فایل JSON
+                    JsonStorage.saveTurnInfo(
+                        context,
+                        schedule.showId,
+                        info.appoint,
+                        info.telAppoint,
+                        info.webAppoint
+                    )
                     showTurnInfoDialog(context, schedule, info)
                 } else {
                     AlertDialog.Builder(context)
