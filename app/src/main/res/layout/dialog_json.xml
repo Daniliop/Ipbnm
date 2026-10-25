@@ -5,6 +5,15 @@
     android:orientation="vertical"
     android:padding="12dp">
 
+    <!-- سوییچ ذخیرهٔ خودکار جزئیات نوبت -->
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/switch_auto_fetch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="ذخیرهٔ خودکار جزئیات نوبت (JSON)"
+        android:textSize="14sp"
+        android:paddingVertical="8dp" />
+
     <TextView
         android:id="@+id/tv_size"
         android:layout_width="match_parent"
