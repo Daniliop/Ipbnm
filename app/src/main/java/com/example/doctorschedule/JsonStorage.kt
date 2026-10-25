@@ -6,6 +6,19 @@ import org.json.JSONObject
 
 object JsonStorage {
     private const val FILE_NAME = "doctors_data.json"
+    private const val PREFS = "doctor_app_prefs"
+    private const val KEY_AUTO_FETCH = "auto_fetch_turn_info"
+
+    // === تنظیمات سوییچ استخراج خودکار جزئیات نوبت (پیش‌فرض: خاموش) ===
+    fun isAutoFetchEnabled(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return prefs.getBoolean(KEY_AUTO_FETCH, false)
+    }
+
+    fun setAutoFetchEnabled(context: Context, enabled: Boolean) {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(KEY_AUTO_FETCH, enabled).apply()
+    }
 
     @Synchronized
     fun saveDoctors(context: Context, doctors: List<Doctor>) {
